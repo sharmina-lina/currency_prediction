@@ -54,10 +54,10 @@ if __name__ == "__main__":
         predictions = []
         correctness = []
 
-        threshold_fraction = 0.8
-        num_previous_windows = 5
+       # threshold_fraction = 0.8
+       # num_previous_windows = 5
 
-        accumulated_difference = 0
+       # accumulated_difference = 0
         
 
         for i in range(len(unique_dates) - time_window):

@@ -3,8 +3,6 @@ import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 from datetime import datetime
-from sklearn.model_selection import train_test_split
-from sklearn.metrics import accuracy_score
 from io import StringIO
 
 API_URL_TEMPLATE = "https://data.norges-bank.no/api/data/EXR/B.{currency}.NOK.SP?format=csv&startPeriod={start_date}&endPeriod={end_date}&locale=en"
@@ -24,7 +22,7 @@ def preprocess_and_save_data(data,output_file):
     df.to_csv(output_file, index=False)
     print("Data Saved")
 
-def corelation_predection(df):
+def corelation_based_predection(df):
     unique_dates = df['TIME_PERIOD'].unique()
 
     differences = []
@@ -86,22 +84,17 @@ def corelation_predection(df):
     labels = ["Correctly Predict", "Wrongly Predict"]
     proportions = [correct_percentage, wrong_percentage]
     plt.pie(proportions, labels=labels, autopct="%1.1f%%")
-    plt.title("Time window rate prediction")
+    plt.title("Correlation-based prediction")
     plt.show()
 
 
-def thresholdbased_prediction(df):
+def mean_based_prediction(df):
     unique_dates = df['TIME_PERIOD'].unique()
 
     differences = []
     differences_file = []
     predictions = []
     correctness = []
-
-    threshold_fraction = 0.8
-    num_previous_windows = 5
-
-    accumulated_difference = 0
         
 
     for i in range(len(unique_dates) - time_window):
@@ -110,10 +103,11 @@ def thresholdbased_prediction(df):
 
         window_data = df[(df['TIME_PERIOD'] >= start_dt) & (df['TIME_PERIOD'])]
 
-        if window_data['OBS_VALUE'].is_monotonic_increasing:
-            prediction = 1  # Uptrend (predict a positive difference)
+        mean_value = window_data['OBS_VALUE'].mean()
+        if window_data.iloc[-1]['OBS_VALUE'] > mean_value:
+            prediction = 1  # Predict a positive difference
         else:
-            prediction = -1 
+            prediction = -1  # Predict a negative difference
 
         start_value = window_data.iloc[0]['OBS_VALUE']
         end_value = window_data.iloc[-1]['OBS_VALUE']
@@ -156,10 +150,10 @@ def thresholdbased_prediction(df):
     labels = ["Correctly Predict", "Wrongly Predict"]
     proportions = [correct_percentage, wrong_percentage]
     plt.pie(proportions, labels=labels, autopct="%1.1f%%")
-    plt.title("Time window rate prediction")
+    plt.title("Mean-based prediction")
     plt.show()
 
-def rule3_prediction(df):
+def threshold_based_prediction(df):
     unique_dates = df['TIME_PERIOD'].unique()
 
     differences = []
@@ -188,7 +182,7 @@ def rule3_prediction(df):
 
         if i >= num_previous_windows:
             accumulated_difference -= differences[i - num_previous_windows]
-            accumulated_difference += difference
+        accumulated_difference += difference
             
         if i >= num_previous_windows:
             mean_difference = accumulated_difference / num_previous_windows
@@ -196,7 +190,7 @@ def rule3_prediction(df):
             # Handle the case when there are not enough previous windows
             mean_difference = 0
             
-            threshold = threshold_fraction * mean_difference
+        threshold = threshold_fraction * mean_difference
 
         if difference > threshold:
             prediction = 1
@@ -228,7 +222,7 @@ def rule3_prediction(df):
     wrong_percentage = 100 - correct_percentage
 
         # Save the differences to a CSV file
-    differences_file_df.to_csv('data/time_window_differences.csv', index=False)
+    differences_file_df.to_csv('data/time_window_differences.csv', index=False) 
     predictions_df.to_csv('data/time_window_prediction.csv', index = False)
 
     print("Time window differences saved to 'data/time_window_differences.csv'.")
@@ -239,18 +233,18 @@ def rule3_prediction(df):
     labels = ["Correctly Predict", "Wrongly Predict"]
     proportions = [correct_percentage, wrong_percentage]
     plt.pie(proportions, labels=labels, autopct="%1.1f%%")
-    plt.title("Time window rate prediction")
+    plt.title("Threshold-based prediction")
     plt.show()
 
 
 
 def apply_rule(choice, df):
     if choice == 1:
-        corelation_predection(df)
+        corelation_based_predection(df)
     elif choice == 2:
-        thresholdbased_prediction(df)
+        mean_based_prediction(df)
     elif choice == 3:
-        rule3_prediction(df)
+        threshold_based_prediction(df)
     else:
         print("Invalid selection")
 
@@ -276,9 +270,9 @@ if __name__ == "__main__":
         df = pd.read_csv(output_file,delimiter=';')
         
         print("Choose a rule to apply for Prediction the Exchange rate:")
-        print("1. Rule One")
-        print("2. Rule two")
-        print("3. Rule three")
+        print("1. Rule for Correlation-based Prediction")
+        print("2. Rule two for Mean-based Prediction")
+        print("3. Rule three Threshold-based Prediction")
         choice = int(input("Enter your choice (1 or 2 or 3)  "))
 
         apply_rule(choice,df)
