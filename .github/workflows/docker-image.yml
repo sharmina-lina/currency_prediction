@@ -29,5 +29,39 @@ jobs:
 
     - name: Push the docker image
       run: docker push ${{ secrets.DOCKER_USERNAME }}/currency-prediction:latest
+
+  deploy:
+        runs-on: self-hosted
+        needs: build  # This job will run only after the build job completes successfully
+        
+              
+        steps:
+        - name: Prepare SSH key
+          run: |
+            echo "${{ secrets.VM_SSH_KEY }}" > vm_key.pem
+            chmod 600 vm_key.pem
+              
+        - name: Deploy Docker container on VM
+          env:
+            VM_HOST: ${{ secrets.VM_HOST }}
+            VM_USER: ${{ secrets.VM_USER }}
+          run: |
+                ssh -vvv -tt -o StrictHostKeyChecking=no -i vm_key.pem $VM_USER@$VM_HOST << 'EOF'
+                  # Log in to Docker Hub (on the VM)
+                  echo $DOCKER_PASSWORD | docker login -u $DOCKER_USERNAME --password-stdin
+                          
+                  # Pull the latest Docker image
+                  docker pull sharmina/currency-prediction:latest
+              
+                  # Stop and remove any existing container
+                  
+                  docker stop currency-prediction || true
+                  docker rm currency-prediction || true
+                          
+              
+                  # Run the new container
+                  docker run -d -p 3000:3000 --name currency-prediction sharmina/currency-prediction:latest
+                  exit
+                EOF
       
       
